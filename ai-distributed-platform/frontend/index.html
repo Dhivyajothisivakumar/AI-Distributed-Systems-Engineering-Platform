@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>AI Distributed Systems Platform</title>
+
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+<header class="navbar">
+
+    <div class="brand">
+        <div class="brand-mark">AI</div>
+
+        <div>
+            <h2>AI Distributed Systems</h2>
+            <span>Engineering Platform</span>
+        </div>
+    </div>
+
+    <nav>
+        <a href="#overview" class="active">Overview</a>
+        <a href="#tasks">Tasks</a>
+        <a href="#workers">Workers</a>
+        <a href="#monitoring">Monitoring</a>
+        <a href="#ai">AI Analysis</a>
+    </nav>
+
+    <div class="nav-actions">
+
+        <span class="online-pill">
+            <span></span>
+            Online
+        </span>
+
+        <button class="nav-button">
+            Sign In
+        </button>
+
+        <button
+            class="primary-button"
+            onclick="document.getElementById('taskInput').focus()">
+            Get Started →
+        </button>
+
+    </div>
+
+</header>
+
+
+<main>
+
+    <!-- HERO -->
+
+    <section class="hero" id="overview">
+
+        <div class="hero-content">
+
+            <div class="eyebrow">
+                <span></span>
+                BUILD · DEPLOY · MONITOR · SCALE
+            </div>
+
+            <h1>
+                AI Distributed
+                <br>
+                Systems
+                <strong>Engineering Platform</strong>
+            </h1>
+
+            <p class="hero-description">
+                Build, deploy and manage intelligent distributed systems
+                with AI. Automate workflows, monitor performance and keep
+                your platform running — all in one place.
+            </p>
+
+            <div class="hero-buttons">
+
+                <button
+                    class="hero-primary"
+                    onclick="document.getElementById('taskInput').focus()">
+                    Get Started →
+                </button>
+
+                <button class="hero-secondary">
+                    ◉ &nbsp; Watch Demo
+                </button>
+
+            </div>
+
+        </div>
+
+
+        <!-- DASHBOARD PREVIEW -->
+
+        <div class="dashboard-preview">
+
+            <div class="browser-top">
+
+                <div class="browser-dots">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+
+                <div class="browser-title">
+                    AI Distributed Systems
+                </div>
+
+                <div class="preview-online">
+                    ● System Online
+                </div>
+
+            </div>
+
+
+            <div class="preview-body">
+
+                <aside class="preview-sidebar">
+
+                    <div class="preview-logo">
+                        AI
+                    </div>
+
+                    <div class="preview-menu active">
+                        ◫ Dashboard
+                    </div>
+
+                    <div class="preview-menu">
+                        ≡ Tasks
+                    </div>
+
+                    <div class="preview-menu">
+                        ◎ Workers
+                    </div>
+
+                    <div class="preview-menu">
+                        ◌ Monitoring
+                    </div>
+
+                    <div class="preview-menu">
+                        ✦ AI Analysis
+                    </div>
+
+                </aside>
+
+
+                <div class="preview-main">
+
+                    <div class="preview-heading">
+
+                        <div>
+                            <small>SYSTEM OVERVIEW</small>
+                            <h3>Distributed System</h3>
+                        </div>
+
+                        <span id="previewHealth">
+                            ● Healthy
+                        </span>
+
+                    </div>
+
+
+                    <div class="preview-stats">
+
+                        <div>
+                            <small>Services</small>
+                            <strong id="previewServices">3</strong>
+                            <span>Active services</span>
+                        </div>
+
+                        <div>
+                            <small>Tasks</small>
+                            <strong id="previewTasks">0</strong>
+                            <span>Total processed</span>
+                        </div>
+
+                        <div>
+                            <small>Workers</small>
+                            <strong id="previewWorkers">0</strong>
+                            <span>Connected</span>
+                        </div>
+
+                        <div>
+                            <small>Failures</small>
+                            <strong id="previewFailures">0</strong>
+                            <span>Needs attention</span>
+                        </div>
+
+                    </div>
+
+
+                    <div class="preview-task-panel">
+
+                        <div class="preview-panel-title">
+                            <strong>Recent Tasks</strong>
+                            <span>View All →</span>
+                        </div>
+
+                        <div id="previewTaskList">
+                            Loading...
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </section>
+
+
+    <!-- FEATURES -->
+
+    <section class="feature-strip">
+
+        <div class="feature">
+
+            <div class="feature-icon">✦</div>
+
+            <div>
+                <strong>AI Powered</strong>
+                <span>Intelligent automation and problem solving</span>
+            </div>
+
+        </div>
+
+
+        <div class="feature">
+
+            <div class="feature-icon">⌘</div>
+
+            <div>
+                <strong>Distributed</strong>
+                <span>Scale across multiple nodes and workers</span>
+            </div>
+
+        </div>
+
+
+        <div class="feature">
+
+            <div class="feature-icon">◇</div>
+
+            <div>
+                <strong>Reliable</strong>
+                <span>Self-healing and fault tolerant</span>
+            </div>
+
+        </div>
+
+
+        <div class="feature">
+
+            <div class="feature-icon">ϟ</div>
+
+            <div>
+                <strong>Real-time</strong>
+                <span>Monitor and recover instantly</span>
+            </div>
+
+        </div>
+
+    </section>
+
+
+    <!-- SYSTEM STATUS -->
+
+    <section class="system-section">
+
+        <div class="section-heading">
+
+            <div>
+                <span>PLATFORM HEALTH</span>
+                <h2>System Status</h2>
+            </div>
+
+            <button
+                class="outline-button"
+                onclick="checkBackend()">
+                Run Health Check
+            </button>
+
+        </div>
+
+
+        <div class="status-box">
+
+            <div class="status-icon">
+                ✓
+            </div>
+
+            <div>
+
+                <strong id="systemStatus">
+                    Online
+                </strong>
+
+                <p>
+                    Your distributed platform is connected and
+                    ready to process tasks.
+                </p>
+
+                <small id="result"></small>
+
+            </div>
+
+        </div>
+
+    </section>
+
+
+    <!-- LIVE STATISTICS -->
+
+    <section class="statistics">
+
+        <div class="stat-card">
+
+            <span>QUEUED</span>
+
+            <strong id="queuedCount">
+                0
+            </strong>
+
+            <small>
+                Waiting for workers
+            </small>
+
+        </div>
+
+
+        <div class="stat-card">
+
+            <span>RUNNING</span>
+
+            <strong id="runningCount">
+                0
+            </strong>
+
+            <small>
+                Currently processing
+            </small>
+
+        </div>
+
+
+        <div class="stat-card">
+
+            <span>COMPLETED</span>
+
+            <strong id="completedCount">
+                0
+            </strong>
+
+            <small>
+                Successfully processed
+            </small>
+
+        </div>
+
+
+        <div class="stat-card">
+
+            <span>FAILED</span>
+
+            <strong id="failedCount">
+                0
+            </strong>
+
+            <small>
+                Maximum retry reached
+            </small>
+
+        </div>
+
+    </section>
+
+
+    <!-- TASK + WORKERS -->
+
+    <section class="content-grid">
+
+        <!-- TASKS -->
+
+        <div class="content-card" id="tasks">
+
+            <div class="card-heading">
+
+                <div>
+                    <span>TASK MANAGEMENT</span>
+                    <h2>Recent Tasks</h2>
+                </div>
+
+                <button onclick="loadTasks()">
+                    Refresh
+                </button>
+
+            </div>
+
+
+            <div
+                id="taskList"
+                class="task-list">
+
+                Loading tasks...
+
+            </div>
+
+        </div>
+
+
+        <!-- WORKERS -->
+
+        <div class="content-card" id="workers">
+
+            <div class="card-heading">
+
+                <div>
+                    <span>INFRASTRUCTURE</span>
+                    <h2>Worker Network</h2>
+                </div>
+
+                <b class="live-badge">
+                    Live
+                </b>
+
+            </div>
+
+
+            <div
+                id="workerList"
+                class="worker-list">
+
+                Loading workers...
+
+            </div>
+
+        </div>
+
+    </section>
+
+
+    <!-- MONITORING -->
+
+    <section
+        class="ai-section"
+        id="monitoring">
+
+        <div class="ai-label">
+            REAL-TIME MONITORING
+        </div>
+
+        <h2>
+            Distributed System Monitoring
+        </h2>
+
+
+        <div class="ai-grid">
+
+            <div>
+
+                <span>
+                    TASK PROCESSING
+                </span>
+
+                <p id="monitorTaskProcessing">
+                    Monitoring task processing...
+                </p>
+
+            </div>
+
+
+            <div>
+
+                <span>
+                    WORKER HEALTH
+                </span>
+
+                <p id="monitorWorkerHealth">
+                    Monitoring worker health...
+                </p>
+
+            </div>
+
+        </div>
+
+    </section>
+
+
+    <!-- AI ANALYSIS -->
+
+    <section
+        class="ai-section"
+        id="ai">
+
+        <div class="ai-label">
+            AI INTELLIGENCE
+        </div>
+
+        <h2>
+            Autonomous System Analysis
+        </h2>
+
+
+        <div class="ai-grid">
+
+            <!-- SYSTEM STATUS -->
+
+            <div>
+
+                <span>
+                    SYSTEM STATUS
+                </span>
+
+                <p id="aiSystemStatus">
+                    Analyzing system...
+                </p>
+
+            </div>
+
+
+            <!-- TASK ANALYSIS -->
+
+            <div>
+
+                <span>
+                    TASK ANALYSIS
+                </span>
+
+                <p id="aiTaskAnalysis">
+                    Analyzing tasks...
+                </p>
+
+            </div>
+
+
+            <!-- ROOT CAUSE -->
+
+            <div>
+
+                <span>
+                    ROOT CAUSE
+                </span>
+
+                <p id="aiRootCause">
+                    No failures detected.
+                </p>
+
+            </div>
+
+
+            <!-- RECOVERY -->
+
+            <div>
+
+                <span>
+                    RECOVERY ACTION
+                </span>
+
+                <p id="aiRecoveryAction">
+                    System monitoring active.
+                </p>
+
+            </div>
+
+        </div>
+
+    </section>
+
+
+    <!-- CREATE TASK -->
+
+    <section class="create-section">
+
+        <div>
+
+            <span>
+                WORKFLOW AUTOMATION
+            </span>
+
+            <h2>
+                Create a new task
+            </h2>
+
+            <p>
+                Send a task to the distributed worker network
+                and monitor its execution in real time.
+            </p>
+
+        </div>
+
+
+        <form
+            id="taskForm"
+            onsubmit="return false;">
+
+            <input
+                type="text"
+                id="taskInput"
+                placeholder="Enter a task..."
+                required>
+
+            <button
+                type="button"
+                onclick="createTask()">
+                Create Task →
+            </button>
+
+        </form>
+
+
+        <p id="taskResult"></p>
+
+    </section>
+
+</main>
+
+
+<script src="app.js"></script>
+
+</body>
+
+</html>
