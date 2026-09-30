@@ -1,0 +1,11 @@
+{
+  "name": "ai-distributed-systems-engineering-platform",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "start": "node backend/server.js"
+  },
+  "dependencies": {
+    "express": "^5.2.1"
+  }
+}
