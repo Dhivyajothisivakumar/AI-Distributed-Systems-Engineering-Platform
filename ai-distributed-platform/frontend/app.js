@@ -1,4 +1,4 @@
-﻿const API = "http://127.0.0.1:5001";
+const API = "";
 
 // ==========================================
 // HELPERS
@@ -288,7 +288,7 @@ async function createTask() {
         if (result) {
 
             result.textContent =
-                `${data.id} created → queued`;
+                `${data.id} created ? queued`;
         }
 
 
@@ -864,8 +864,8 @@ async function loadAnalysis() {
         const health =
             status.failed > 0 ||
             offlineWorkers > 0
-                ? "● Attention"
-                : "● Healthy";
+                ? "? Attention"
+                : "? Healthy";
 
 
         setText(
