@@ -1,6 +1,7 @@
 const express = require("express");
 const path = require("path");
 const { neon } = require("@neondatabase/serverless");
+const { send } = require("@vercel/queue");
 
 const app = express();
 const PORT = 5001;
@@ -10,21 +11,6 @@ const sql = neon(process.env.DATABASE_URL);
 // ================================
 // CORS
 // ================================
-
-app.use((req, res, next) => {
-    res.header("Access-Control-Allow-Origin", "*");
-    res.header("Access-Control-Allow-Headers", "*");
-    res.header(
-        "Access-Control-Allow-Methods",
-        "GET,POST,PUT,DELETE,OPTIONS"
-    );
-
-    if (req.method === "OPTIONS") {
-        return res.sendStatus(200);
-    }
-
-    next();
-});
 
 app.use(express.json());
 

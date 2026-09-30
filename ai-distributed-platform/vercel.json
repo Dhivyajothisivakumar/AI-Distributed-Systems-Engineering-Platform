@@ -4,6 +4,10 @@
     {
       "src": "server.js",
       "use": "@vercel/node"
+    },
+    {
+      "src": "api/queue-consumer.js",
+      "use": "@vercel/node"
     }
   ],
   "routes": [
@@ -11,5 +15,15 @@
       "src": "/(.*)",
       "dest": "server.js"
     }
-  ]
+  ],
+  "functions": {
+    "api/queue-consumer.js": {
+      "experimentalTriggers": [
+        {
+          "type": "queue/v2beta",
+          "topic": "distributed-tasks"
+        }
+      ]
+    }
+  }
 }
