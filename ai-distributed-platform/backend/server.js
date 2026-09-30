@@ -1,8 +1,11 @@
 const express = require("express");
 const path = require("path");
+const { neon } = require("@neondatabase/serverless");
 
 const app = express();
 const PORT = 5001;
+
+const sql = neon(process.env.DATABASE_URL);
 
 // ================================
 // CORS
@@ -15,6 +18,10 @@ app.use((req, res, next) => {
         "Access-Control-Allow-Methods",
         "GET,POST,PUT,DELETE,OPTIONS"
     );
+
+    if (req.method === "OPTIONS") {
+        return res.sendStatus(200);
+    }
 
     next();
 });
@@ -32,343 +39,148 @@ app.use(
 );
 
 // ================================
-// TASK STORAGE
+// HELPERS
 // ================================
 
-let tasks = [];
+function formatTask(row) {
+    return {
+        id: `TASK-${row.id}`,
+        task: row.task,
+        status: row.status,
+        worker: row.worker || "",
+        retries: row.retries,
+        maxRetries: row.max_retries,
+        createdAt: row.created_at,
+        assignedAt: row.assigned_at,
+        completedAt: row.completed_at,
+        failedAt: row.failed_at,
+        lastError: row.last_error || ""
+    };
+}
+
+function formatWorker(row) {
+    return {
+        id: row.id,
+        status: row.status,
+        lastHeartbeat: row.last_heartbeat
+    };
+}
 
 // ================================
-// WORKER STORAGE
+// STATUS
 // ================================
 
-let workers = {
-    "WORKER-1": {
-        status: "online",
-        lastHeartbeat: new Date().toISOString()
-    },
+app.get("/api/status", async (req, res) => {
+    try {
+        const result = await sql`
+            SELECT
+                COUNT(*)::int AS jobs,
+                COUNT(*) FILTER (WHERE status = 'failed')::int AS failed,
+                COUNT(*) FILTER (WHERE status = 'running')::int AS running,
+                COUNT(*) FILTER (WHERE status = 'queued')::int AS queued,
+                COUNT(*) FILTER (WHERE status = 'completed')::int AS completed
+            FROM tasks
+        `;
 
-    "WORKER-2": {
-        status: "online",
-        lastHeartbeat: new Date().toISOString()
-    },
+        const workers = await sql`
+            SELECT status
+            FROM workers
+        `;
 
-    "WORKER-3": {
-        status: "online",
-        lastHeartbeat: new Date().toISOString()
+        const onlineWorkers =
+            workers.filter(w => w.status === "online").length;
+
+        const offlineWorkers =
+            workers.filter(w => w.status === "offline").length;
+
+        res.json({
+            system: "Online",
+            services: 3,
+            jobs: result[0].jobs,
+            failed: result[0].failed,
+            running: result[0].running,
+            queued: result[0].queued,
+            completed: result[0].completed,
+            workers: workers.length,
+            onlineWorkers,
+            offlineWorkers
+        });
+
+    } catch (error) {
+        console.error("STATUS ERROR:", error);
+
+        res.status(500).json({
+            system: "Offline",
+            error: "Database unavailable"
+        });
     }
-};
-
-// ================================
-// HOME
-// ================================
-
-app.get("/", (req, res) => {
-    res.sendFile(
-        path.join(
-            __dirname,
-            "../frontend/index.html"
-        )
-    );
 });
 
 // ================================
-// SYSTEM STATUS
+// GET TASKS
 // ================================
 
-app.get("/api/status", (req, res) => {
-    res.json({
-        system: "Online",
+app.get("/api/tasks", async (req, res) => {
+    try {
+        const rows = await sql`
+            SELECT *
+            FROM tasks
+            ORDER BY id ASC
+        `;
 
-        services: 3,
+        res.json(rows.map(formatTask));
 
-        jobs: tasks.length,
+    } catch (error) {
+        console.error("GET TASKS ERROR:", error);
 
-        failed: tasks.filter(
-            task => task.status === "failed"
-        ).length,
-
-        running: tasks.filter(
-            task => task.status === "running"
-        ).length,
-
-        queued: tasks.filter(
-            task => task.status === "queued"
-        ).length,
-
-        completed: tasks.filter(
-            task => task.status === "completed"
-        ).length,
-
-        workers: Object.keys(workers).length,
-
-        onlineWorkers:
-            Object.values(workers).filter(
-                worker => worker.status === "online"
-            ).length,
-
-        offlineWorkers:
-            Object.values(workers).filter(
-                worker => worker.status === "offline"
-            ).length
-    });
+        res.status(500).json({
+            error: "Failed to load tasks"
+        });
+    }
 });
 
 // ================================
 // CREATE TASK
 // ================================
 
-app.post("/api/tasks", (req, res) => {
-    if (!req.body.task) {
-        return res.status(400).json({
-            error: "Task is required"
+app.post("/api/tasks", async (req, res) => {
+    try {
+        const taskText = String(req.body.task || "").trim();
+
+        if (!taskText) {
+            return res.status(400).json({
+                error: "Task is required"
+            });
+        }
+
+        const rows = await sql`
+            INSERT INTO tasks (task)
+            VALUES (${taskText})
+            RETURNING *
+        `;
+
+        res.status(201).json(
+            formatTask(rows[0])
+        );
+
+    } catch (error) {
+        console.error("CREATE TASK ERROR:", error);
+
+        res.status(500).json({
+            error: "Failed to create task"
         });
     }
-
-    const newTask = {
-        id: `TASK-${tasks.length + 1}`,
-
-        task: req.body.task,
-
-        status: "queued",
-
-        worker: null,
-
-        retries: 0,
-
-        maxRetries: 3,
-
-        createdAt: new Date().toISOString(),
-
-        assignedAt: null,
-
-        completedAt: null,
-
-        failedAt: null,
-
-        lastError: null
-    };
-
-    tasks.push(newTask);
-
-    console.log(
-        "================================="
-    );
-
-    console.log(
-        "Created:",
-        newTask.id
-    );
-
-    console.log(
-        `${newTask.id} → QUEUED`
-    );
-
-    console.log(
-        "================================="
-    );
-
-    res.status(201).json(newTask);
-});
-
-// ================================
-// GET ALL TASKS
-// ================================
-
-app.get("/api/tasks", (req, res) => {
-    res.json(tasks);
 });
 
 // ================================
 // CLAIM TASK
 // ================================
 
-app.post("/api/tasks/claim", (req, res) => {
-    const workerId = req.body.workerId;
-
-    if (!workerId) {
-        return res.status(400).json({
-            error: "workerId is required"
-        });
-    }
-
-    // CHECK WORKER
-
-    if (!workers[workerId]) {
-        return res.status(404).json({
-            error: "Worker not found"
-        });
-    }
-
-    // CHECK WORKER STATUS
-
-    if (workers[workerId].status !== "online") {
-        return res.status(400).json({
-            error: "Worker is offline"
-        });
-    }
-
-    // FIND QUEUED TASK
-
-    const task = tasks.find(
-        task => task.status === "queued"
-    );
-
-    if (!task) {
-        return res.status(404).json({
-            message: "No queued tasks"
-        });
-    }
-
-    // LOCK TASK
-
-    task.status = "running";
-
-    task.worker = workerId;
-
-    task.assignedAt = new Date().toISOString();
-
-    console.log(
-        "================================="
-    );
-
-    console.log(
-        `${workerId} claimed ${task.id}`
-    );
-
-    console.log(
-        `${task.id} → RUNNING`
-    );
-
-    console.log(
-        "================================="
-    );
-
-    res.json(task);
-});
-
-// ================================
-// UPDATE TASK STATUS
-// ================================
-
-app.put("/api/tasks/:id", (req, res) => {
-    const task = tasks.find(
-        t => t.id === req.params.id
-    );
-
-    if (!task) {
-        return res.status(404).json({
-            error: "Task not found"
-        });
-    }
-
-    if (!req.body.status) {
-        return res.status(400).json({
-            error: "Status is required"
-        });
-    }
-
-    // WORKER VERIFICATION
-
-    if (
-        task.worker &&
-        req.body.workerId &&
-        task.worker !== req.body.workerId
-    ) {
-        return res.status(403).json({
-            error: "Task belongs to another worker"
-        });
-    }
-
-    // COMPLETED
-
-    if (req.body.status === "completed") {
-        task.status = "completed";
-
-        task.completedAt =
-            new Date().toISOString();
-
-        task.lastError = null;
-
-        console.log(
-            `${task.id} → COMPLETED`
-        );
-
-        return res.json(task);
-    }
-
-    // FAILED
-
-    if (req.body.status === "failed") {
-        task.retries++;
-
-        task.lastError =
-            req.body.error ||
-            "Worker execution failed";
-
-        task.failedAt =
-            new Date().toISOString();
-
-        console.log(
-            `${task.id} → FAILED`
-        );
-
-        console.log(
-            `Retry count: ${task.retries}/${task.maxRetries}`
-        );
-
-        // AUTOMATIC RETRY
-
-        if (
-            task.retries <
-            task.maxRetries
-        ) {
-            task.status = "queued";
-
-            task.worker = null;
-
-            task.assignedAt = null;
-
-            console.log(
-                `${task.id} → RETRY QUEUED`
-            );
-
-            return res.json({
-                ...task,
-                message: "Task queued for retry"
-            });
-        }
-
-        // FINAL FAILURE
-
-        task.status = "failed";
-
-        console.log(
-            `${task.id} → FINAL FAILED`
-        );
-
-        return res.json(task);
-    }
-
-    // OTHER STATUS
-
-    task.status = req.body.status;
-
-    console.log(
-        `${task.id} → ${task.status}`
-    );
-
-    res.json(task);
-});
-
-// ================================
-// WORKER HEARTBEAT
-// ================================
-
-app.post(
-    "/api/workers/heartbeat",
-    (req, res) => {
-        const workerId =
-            req.body.workerId;
+app.post("/api/tasks/claim", async (req, res) => {
+    try {
+        const workerId = String(
+            req.body.workerId || ""
+        ).trim();
 
         if (!workerId) {
             return res.status(400).json({
@@ -376,202 +188,243 @@ app.post(
             });
         }
 
-        // CREATE WORKER IF NOT EXISTS
+        const worker = await sql`
+            SELECT *
+            FROM workers
+            WHERE id = ${workerId}
+              AND status = 'online'
+            LIMIT 1
+        `;
 
-        if (!workers[workerId]) {
-            workers[workerId] = {
-                status: "online",
-                lastHeartbeat: null
-            };
+        if (worker.length === 0) {
+            return res.status(409).json({
+                error: "Worker is offline"
+            });
         }
 
-        // UPDATE HEARTBEAT
+        const tasks = await sql`
+            UPDATE tasks
+            SET
+                status = 'running',
+                worker = ${workerId},
+                assigned_at = CURRENT_TIMESTAMP
+            WHERE id = (
+                SELECT id
+                FROM tasks
+                WHERE status = 'queued'
+                ORDER BY id ASC
+                LIMIT 1
+            )
+            RETURNING *
+        `;
 
-        workers[workerId].status =
-            "online";
+        if (tasks.length === 0) {
+            return res.status(204).send();
+        }
 
-        workers[workerId].lastHeartbeat =
-            new Date().toISOString();
+        res.json(formatTask(tasks[0]));
 
-        console.log(
-            `Heartbeat received from ${workerId}`
+    } catch (error) {
+        console.error("CLAIM ERROR:", error);
+
+        res.status(500).json({
+            error: "Failed to claim task"
+        });
+    }
+});
+
+// ================================
+// UPDATE TASK
+// ================================
+
+app.put("/api/tasks/:id", async (req, res) => {
+    try {
+        const numericId = Number(
+            req.params.id.replace("TASK-", "")
         );
 
+        if (!Number.isInteger(numericId)) {
+            return res.status(400).json({
+                error: "Invalid task ID"
+            });
+        }
+
+        const status = req.body.status;
+        const lastError =
+            req.body.lastError || null;
+
+        if (!["completed", "failed"].includes(status)) {
+            return res.status(400).json({
+                error: "Invalid status"
+            });
+        }
+
+        if (status === "completed") {
+            const rows = await sql`
+                UPDATE tasks
+                SET
+                    status = 'completed',
+                    completed_at = CURRENT_TIMESTAMP,
+                    failed_at = NULL,
+                    last_error = NULL
+                WHERE id = ${numericId}
+                RETURNING *
+            `;
+
+            if (rows.length === 0) {
+                return res.status(404).json({
+                    error: "Task not found"
+                });
+            }
+
+            return res.json(
+                formatTask(rows[0])
+            );
+        }
+
+        const rows = await sql`
+            UPDATE tasks
+            SET
+                retries = retries + 1,
+                last_error = ${lastError}
+            WHERE id = ${numericId}
+            RETURNING *
+        `;
+
+        if (rows.length === 0) {
+            return res.status(404).json({
+                error: "Task not found"
+            });
+        }
+
+        const task = rows[0];
+
+        if (task.retries < task.max_retries) {
+            const retryRows = await sql`
+                UPDATE tasks
+                SET
+                    status = 'queued',
+                    worker = NULL,
+                    assigned_at = NULL,
+                    failed_at = NULL
+                WHERE id = ${numericId}
+                RETURNING *
+            `;
+
+            return res.json(
+                formatTask(retryRows[0])
+            );
+        }
+
+        const failedRows = await sql`
+            UPDATE tasks
+            SET
+                status = 'failed',
+                failed_at = CURRENT_TIMESTAMP
+            WHERE id = ${numericId}
+            RETURNING *
+        `;
+
+        res.json(
+            formatTask(failedRows[0])
+        );
+
+    } catch (error) {
+        console.error("UPDATE TASK ERROR:", error);
+
+        res.status(500).json({
+            error: "Failed to update task"
+        });
+    }
+});
+
+// ================================
+// WORKER HEARTBEAT
+// ================================
+
+app.post("/api/workers/heartbeat", async (req, res) => {
+    try {
+        const workerId = String(
+            req.body.workerId || ""
+        ).trim();
+
+        if (!workerId) {
+            return res.status(400).json({
+                error: "workerId is required"
+            });
+        }
+
+        const rows = await sql`
+            INSERT INTO workers (
+                id,
+                status,
+                last_heartbeat
+            )
+            VALUES (
+                ${workerId},
+                'online',
+                CURRENT_TIMESTAMP
+            )
+            ON CONFLICT (id)
+            DO UPDATE SET
+                status = 'online',
+                last_heartbeat = CURRENT_TIMESTAMP
+            RETURNING *
+        `;
+
         res.json({
-            workerId: workerId,
+            message: "Heartbeat received",
+            worker: formatWorker(rows[0])
+        });
 
-            status: "online",
+    } catch (error) {
+        console.error("HEARTBEAT ERROR:", error);
 
-            lastHeartbeat:
-                workers[workerId]
-                    .lastHeartbeat
+        res.status(500).json({
+            error: "Heartbeat failed"
         });
     }
-);
+});
 
 // ================================
-// GET ALL WORKERS
+// GET WORKERS
 // ================================
 
-app.get(
-    "/api/workers",
-    (req, res) => {
-        res.json(workers);
-    }
-);
+app.get("/api/workers", async (req, res) => {
+    try {
+        const rows = await sql`
+            SELECT *
+            FROM workers
+            ORDER BY id ASC
+        `;
 
-// ================================
-// AUTOMATIC WORKER FAILURE DETECTION
-// ================================
+        res.json(
+            rows.map(formatWorker)
+        );
 
-const HEARTBEAT_TIMEOUT = 60000;
+    } catch (error) {
+        console.error("GET WORKERS ERROR:", error);
 
-setInterval(() => {
-    const now = Date.now();
-
-    Object.keys(workers)
-        .forEach(workerId => {
-            const worker =
-                workers[workerId];
-
-            if (!worker.lastHeartbeat) {
-                return;
-            }
-
-            const lastHeartbeat =
-                new Date(
-                    worker.lastHeartbeat
-                ).getTime();
-
-            const timeSinceHeartbeat =
-                now - lastHeartbeat;
-
-            if (
-                timeSinceHeartbeat >
-                HEARTBEAT_TIMEOUT
-            ) {
-                if (
-                    worker.status ===
-                    "online"
-                ) {
-                    worker.status =
-                        "offline";
-
-                    console.log(
-                        `⚠️ ${workerId} → OFFLINE`
-                    );
-
-                    // REQUEUE WORKER TASK
-
-                    tasks
-                        .filter(
-                            task =>
-                                task.worker ===
-                                    workerId &&
-                                task.status ===
-                                    "running"
-                        )
-                        .forEach(task => {
-                            task.status =
-                                "queued";
-
-                            task.worker = null;
-
-                            task.assignedAt =
-                                null;
-
-                            task.lastError =
-                                "Worker went offline";
-
-                            task.failedAt =
-                                new Date()
-                                    .toISOString();
-
-                            console.log(
-                                `${task.id} → REQUEUED`
-                            );
-                        });
-                }
-            }
+        res.status(500).json({
+            error: "Failed to load workers"
         });
-}, 5000);
+    }
+});
 
 // ================================
-// SYSTEM MONITOR
+// ROOT
 // ================================
 
-setInterval(() => {
-    const queuedTasks =
-        tasks.filter(
-            task =>
-                task.status === "queued"
-        ).length;
-
-    const runningTasks =
-        tasks.filter(
-            task =>
-                task.status === "running"
-        ).length;
-
-    const completedTasks =
-        tasks.filter(
-            task =>
-                task.status === "completed"
-        ).length;
-
-    const failedTasks =
-        tasks.filter(
-            task =>
-                task.status === "failed"
-        ).length;
-
-    const onlineWorkers =
-        Object.values(workers)
-            .filter(
-                worker =>
-                    worker.status === "online"
-            ).length;
-
-    const offlineWorkers =
-        Object.values(workers)
-            .filter(
-                worker =>
-                    worker.status === "offline"
-            ).length;
-
-    console.log(
-        `Monitor → ` +
-        `Queued: ${queuedTasks} | ` +
-        `Running: ${runningTasks} | ` +
-        `Completed: ${completedTasks} | ` +
-        `Failed: ${failedTasks} | ` +
-        `Online Workers: ${onlineWorkers} | ` +
-        `Offline Workers: ${offlineWorkers}`
-    );
-}, 5000);
+app.get("/api/health", (req, res) => {
+    res.json({
+        status: "ok",
+        database: "connected"
+    });
+});
 
 // ================================
-// SERVER START
+// LOCAL SERVER
 // ================================
-
-console.log(
-    "================================="
-);
-
-console.log(
-    "AI DISTRIBUTED SYSTEMS PLATFORM"
-);
-
-console.log(
-    "================================="
-);
-
-console.log(
-    `Server running on http://localhost:${PORT}`
-);
-
-// LOCAL DEVELOPMENT
-// Vercel will import the app directly.
 
 if (require.main === module) {
     app.listen(PORT, () => {
@@ -580,7 +433,5 @@ if (require.main === module) {
         );
     });
 }
-
-// VERCEL EXPORT
 
 module.exports = app;
