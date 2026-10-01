@@ -1,4 +1,4 @@
-const http = require("http");
+﻿const http = require("http");
 
 
 // ================================
@@ -30,7 +30,7 @@ function sendHeartbeat() {
 
     const options = {
 
-        hostname: "localhost",
+        hostname: "127.0.0.1",
 
         port: 5001,
 
@@ -77,7 +77,9 @@ function sendHeartbeat() {
 
                         try {
 
-                            const result =
+                            if (!response.trim()) { return; }
+
+const result =
                                 JSON.parse(response);
 
 
@@ -87,7 +89,7 @@ function sendHeartbeat() {
 
                                 console.log(
 
-                                    `💓 ${workerId} heartbeat OK`
+                                    `ðŸ’“ ${workerId} heartbeat OK`
 
                                 );
 
@@ -97,7 +99,7 @@ function sendHeartbeat() {
 
                                 console.log(
 
-                                    `❌ ${workerId} heartbeat failed`
+                                    `âŒ ${workerId} heartbeat failed`
 
                                 );
 
@@ -111,7 +113,7 @@ function sendHeartbeat() {
 
                             console.log(
 
-                                `❌ ${workerId}: ` +
+                                `âŒ ${workerId}: ` +
                                 `Invalid heartbeat response`
 
                             );
@@ -132,7 +134,7 @@ function sendHeartbeat() {
 
             console.log(
 
-                `❌ ${workerId}: ` +
+                `âŒ ${workerId}: ` +
                 `Heartbeat connection failed`
 
             );
@@ -165,7 +167,7 @@ function claimTask() {
 
     const options = {
 
-        hostname: "localhost",
+        hostname: "127.0.0.1",
 
         port: 5001,
 
@@ -213,7 +215,9 @@ function claimTask() {
 
                         try {
 
-                            const result =
+                            if (!response.trim()) { return; }
+
+const result =
                                 JSON.parse(
                                     response
                                 );
@@ -230,7 +234,7 @@ function claimTask() {
 
                                 console.log(
 
-                                    `📭 ${workerId}: ` +
+                                    `ðŸ“­ ${workerId}: ` +
                                     `No queued tasks`
 
                                 );
@@ -251,7 +255,7 @@ function claimTask() {
 
                                 console.log(
 
-                                    `⚠️ ${workerId}: ` +
+                                    `âš ï¸ ${workerId}: ` +
                                     `${result.error}`
 
                                 );
@@ -272,7 +276,7 @@ function claimTask() {
 
                                 console.log(
 
-                                    `🔒 ${workerId} claimed ` +
+                                    `ðŸ”’ ${workerId} claimed ` +
                                     `${result.id}`
 
                                 );
@@ -280,7 +284,7 @@ function claimTask() {
 
                                 console.log(
 
-                                    `⚙️ ${workerId} executing: ` +
+                                    `âš™ï¸ ${workerId} executing: ` +
                                     `${result.task}`
 
                                 );
@@ -301,7 +305,7 @@ function claimTask() {
 
                             console.log(
 
-                                `⚠️ ${workerId}: ` +
+                                `âš ï¸ ${workerId}: ` +
                                 `Unexpected response ` +
                                 `${res.statusCode}`
 
@@ -313,40 +317,40 @@ function claimTask() {
 
                         catch (error) {
 
-                            console.log(
-
-                                `❌ ${workerId}: ` +
-                                `Invalid response`
-
-                            );
-
-                            console.log(
-                                response
-                            );
+                            console.log("WORKER ERROR:", error.message);
+                            console.log("RESPONSE:", response);
 
                         }
 
-                    }
-                );
 
-            }
 
-        );
+
+
+
+
+
+
+                        }
+                    );
+
+                }
+
+            );
 
 
     request.on(
         "error",
         () => {
 
-            console.log(
-
-                `❌ ${workerId}: ` +
-                `Cannot connect to backend`
-
-            );
+            console.log("Cannot connect to backend");
 
         }
     );
+
+
+
+
+
 
 
     request.write(data);
@@ -364,7 +368,7 @@ function executeTask(task) {
 
     console.log(
 
-        `🚀 ${workerId} started ` +
+        `ðŸš€ ${workerId} started ` +
         `${task.id}`
 
     );
@@ -391,7 +395,7 @@ function executeTask(task) {
 
             console.log(
 
-                `❌ ${workerId}: ` +
+                `âŒ ${workerId}: ` +
                 `${task.id} failed`
 
             );
@@ -419,7 +423,7 @@ function executeTask(task) {
 
         console.log(
 
-            `✅ ${workerId}: ` +
+            `âœ… ${workerId}: ` +
             `${task.id} completed`
 
         );
@@ -466,11 +470,9 @@ function updateTask(
 
     const options = {
 
-        hostname:
-            "localhost",
+        hostname: "127.0.0.1",
 
-        port:
-            5001,
+        port: 5001,
 
         path:
             `/api/tasks/${taskId}`,
@@ -517,7 +519,9 @@ function updateTask(
 
                         try {
 
-                            const result =
+                            if (!response.trim()) { return; }
+
+const result =
                                 JSON.parse(
                                     response
                                 );
@@ -525,8 +529,8 @@ function updateTask(
 
                             console.log(
 
-                                `📊 ${workerId} → ` +
-                                `${taskId} → ` +
+                                `ðŸ“Š ${workerId} â†’ ` +
+                                `${taskId} â†’ ` +
                                 `${result.status}`
 
                             );
@@ -538,7 +542,7 @@ function updateTask(
 
                                 console.log(
 
-                                    `🔁 ${result.message}`
+                                    `ðŸ” ${result.message}`
 
                                 );
 
@@ -550,7 +554,7 @@ function updateTask(
 
                             console.log(
 
-                                `❌ ${workerId}: ` +
+                                `âŒ ${workerId}: ` +
                                 `Invalid update response`
 
                             );
@@ -571,7 +575,7 @@ function updateTask(
 
             console.log(
 
-                `❌ ${workerId}: ` +
+                `âŒ ${workerId}: ` +
                 `Failed to update task`
 
             );
@@ -621,3 +625,9 @@ setInterval(() => {
     claimTask();
 
 }, 5001);
+
+
+
+
+
+
