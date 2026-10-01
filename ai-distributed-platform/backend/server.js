@@ -242,8 +242,41 @@ setInterval(() => {
     const now = Date.now();
 
     for (const worker of Object.values(workers)) {
+        const wasOnline = worker.online;
+
         worker.online =
             now - worker.lastHeartbeat < 60000;
+
+        if (wasOnline && !worker.online) {
+            console.log(
+                `[RECOVERY] ${worker.workerId} is OFFLINE`
+            );
+
+            const affectedTasks = tasks.filter(
+                t =>
+                    t.status === "running" &&
+                    t.worker === worker.workerId
+            );
+
+            for (const task of affectedTasks) {
+                task.status = "queued";
+                task.worker = null;
+                task.failedAt = null;
+
+                task.recoveryCount =
+                    (task.recoveryCount || 0) + 1;
+
+                task.recoveredAt =
+                    new Date().toISOString();
+
+                task.lastError =
+                    `Worker ${worker.workerId} became offline. Task automatically re-queued.`;
+
+                console.log(
+                    `[RECOVERY] ${task.id} re-queued from ${worker.workerId}`
+                );
+            }
+        }
     }
 
     const s = getStats();
@@ -259,3 +292,5 @@ app.listen(PORT, () => {
     console.log("Backend running on port 5001");
     console.log("================================");
 });
+
+

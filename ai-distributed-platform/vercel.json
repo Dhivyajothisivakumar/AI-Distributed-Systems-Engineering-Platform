@@ -15,15 +15,5 @@
       "src": "/(.*)",
       "dest": "server.js"
     }
-  ],
-  "functions": {
-    "api/queue-consumer.js": {
-      "experimentalTriggers": [
-        {
-          "type": "queue/v2beta",
-          "topic": "distributed-tasks"
-        }
-      ]
-    }
-  }
+  ]
 }
