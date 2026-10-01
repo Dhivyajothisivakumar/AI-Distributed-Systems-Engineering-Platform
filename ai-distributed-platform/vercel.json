@@ -1,5 +1,11 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "rewrites": [
+    {
+      "source": "/api/((?!queue-consumer(?:/|$)).*)",
+      "destination": "/api"
+    }
+  ],
   "functions": {
     "api/queue-consumer.js": {
       "experimentalTriggers": [
