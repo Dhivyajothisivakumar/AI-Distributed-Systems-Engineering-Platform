@@ -12,6 +12,10 @@
   ],
   "routes": [
     {
+      "src": "/api/queue-consumer",
+      "dest": "/api/queue-consumer.js"
+    },
+    {
       "src": "/(.*)",
       "dest": "server.js"
     }
