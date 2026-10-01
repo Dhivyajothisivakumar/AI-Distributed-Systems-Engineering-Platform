@@ -1,4 +1,4 @@
-﻿const { handleCallback } = require("@vercel/queue");
+const { handleCallback, send } = require("@vercel/queue");
 const { neon } = require("@neondatabase/serverless");
 
 const sql = neon(process.env.DATABASE_URL);
@@ -41,19 +41,36 @@ const callback = handleCallback(async (message, metadata) => {
 
     if (String(task.task).toLowerCase().includes("fail")) {
         const newRetries = Number(task.retries || 0) + 1;
+        const maxRetries = Number(task.max_retries || 3);
 
-        if (newRetries < Number(task.max_retries || 3)) {
+        if (newRetries < maxRetries) {
             await sql`
                 UPDATE tasks
                 SET
                     status = 'queued',
                     retries = ${newRetries},
+                    assigned_at = NULL,
                     failed_at = CURRENT_TIMESTAMP,
                     last_error = 'Simulated worker failure'
                 WHERE id = ${taskId}
             `;
 
-            throw new Error("Simulated worker failure");
+            console.log(
+                `TASK-${taskId} failed. Retry ${newRetries}/${maxRetries}`
+            );
+
+            await send("distributed-tasks", {
+                taskId: taskId
+            });
+
+            console.log(`TASK-${taskId} re-queued successfully`);
+
+            return {
+                success: true,
+                taskId,
+                status: "queued",
+                retries: newRetries
+            };
         }
 
         await sql`
@@ -65,6 +82,10 @@ const callback = handleCallback(async (message, metadata) => {
                 last_error = 'Simulated worker failure'
             WHERE id = ${taskId}
         `;
+
+        console.log(
+            `TASK-${taskId} permanently failed after ${newRetries} retries`
+        );
 
         return {
             success: false,
