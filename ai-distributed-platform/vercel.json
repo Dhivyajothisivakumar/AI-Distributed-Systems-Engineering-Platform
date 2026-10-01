@@ -1,8 +1,13 @@
 ﻿{
-  "crons": [
-    {
-      "path": "/api/queue-consumer",
-      "schedule": "* * * * *"
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "functions": {
+    "api/queue-consumer.js": {
+      "experimentalTriggers": [
+        {
+          "type": "queue/v2beta",
+          "topic": "distributed-tasks"
+        }
+      ]
     }
-  ]
+  }
 }
