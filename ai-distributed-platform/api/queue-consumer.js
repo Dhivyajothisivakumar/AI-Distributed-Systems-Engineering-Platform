@@ -1,11 +1,11 @@
-const { handleCallback } = require("@vercel/queue");
+﻿const { handleCallback } = require("@vercel/queue");
 const { neon } = require("@neondatabase/serverless");
 
 const sql = neon(process.env.DATABASE_URL);
 
 module.exports = handleCallback(async (message, metadata) => {
-    console.log("📥 Queue message received:", metadata.messageId);
-    console.log("📋 Message:", message);
+    console.log("Queue message received:", metadata.messageId);
+    console.log("Message:", message);
 
     const taskId = Number(message.taskId);
 
@@ -37,7 +37,7 @@ module.exports = handleCallback(async (message, metadata) => {
         WHERE id = ${taskId}
     `;
 
-    console.log(`⚙️ Processing TASK-${taskId}: ${task.task}`);
+    console.log(`Processing TASK-${taskId}: ${task.task}`);
 
     // Simulate distributed processing
     await new Promise(resolve => setTimeout(resolve, 3000));
@@ -58,7 +58,7 @@ module.exports = handleCallback(async (message, metadata) => {
             `;
 
             console.log(
-                `🔁 TASK-${taskId} failed → retry ${newRetries}`
+                `TASK-${taskId} failed -> retry ${newRetries}`
             );
 
             throw new Error("Simulated worker failure");
@@ -74,12 +74,19 @@ module.exports = handleCallback(async (message, metadata) => {
             WHERE id = ${taskId}
         `;
 
-        console.log(`❌ TASK-${taskId} permanently failed`);
+        console.log(
+            `TASK-${taskId} failed permanently after ${newRetries} retries`
+        );
 
-        return;
+        return {
+            success: false,
+            taskId,
+            status: "failed",
+            retries: newRetries
+        };
     }
 
-    // Successful completion
+    // Successful task
     await sql`
         UPDATE tasks
         SET
@@ -89,5 +96,11 @@ module.exports = handleCallback(async (message, metadata) => {
         WHERE id = ${taskId}
     `;
 
-    console.log(`✅ TASK-${taskId} completed successfully`);
+    console.log(`TASK-${taskId} completed successfully`);
+
+    return {
+        success: true,
+        taskId,
+        status: "completed"
+    };
 });
