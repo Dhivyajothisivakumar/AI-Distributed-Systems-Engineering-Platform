@@ -1,633 +1,93 @@
 ﻿const http = require("http");
 
+const workerId = process.env.WORKER_ID || "WORKER-1";
+const HOST = "127.0.0.1";
+const PORT = 5001;
 
-// ================================
-// WORKER ID
-// ================================
+function post(path, body) {
+    return new Promise((resolve, reject) => {
+        const data = JSON.stringify(body);
 
-const workerId =
-    process.env.WORKER_ID ||
-    "WORKER-1";
-
-
-// ================================
-// WORKER START
-// ================================
-
-console.log("================================");
-
-
-
-// ================================
-// WORKER HEARTBEAT
-// ================================
-
-function sendHeartbeat() {
-
-    const data = JSON.stringify({
-        workerId: workerId
-    });
-
-    const options = {
-
-        hostname: "127.0.0.1",
-
-        port: 5001,
-
-        path: "/api/workers/heartbeat",
-
-        method: "POST",
-
-        headers: {
-
-            "Content-Type":
-                "application/json",
-
-            "Content-Length":
-                Buffer.byteLength(data)
-
-        }
-
-    };
-
-
-    const request =
-        http.request(
-
-            options,
-
-            (res) => {
-
-                let response = "";
-
-
-                res.on(
-                    "data",
-                    chunk => {
-
-                        response += chunk;
-
-                    }
-                );
-
-
-                res.on(
-                    "end",
-                    () => {
-
-                        try {
-
-                            if (!response.trim()) { return; }
-
-const result =
-                                JSON.parse(response);
-
-
-                            if (
-                                res.statusCode === 200
-                            ) {
-
-                                console.log(
-
-                                    `ðŸ’“ ${workerId} heartbeat OK`
-
-                                );
-
-                            }
-
-                            else {
-
-                                console.log(
-
-                                    `âŒ ${workerId} heartbeat failed`
-
-                                );
-
-                                console.log(result);
-
-                            }
-
-                        }
-
-                        catch {
-
-                            console.log(
-
-                                `âŒ ${workerId}: ` +
-                                `Invalid heartbeat response`
-
-                            );
-
-                        }
-
-                    }
-                );
-
+        const req = http.request({
+            hostname: HOST,
+            port: PORT,
+            path: path,
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Content-Length": Buffer.byteLength(data)
             }
-
-        );
-
-
-    request.on(
-        "error",
-        () => {
-
-            console.log(
-
-                `âŒ ${workerId}: ` +
-                `Heartbeat connection failed`
-
-            );
-
-        }
-    );
-
-
-    request.write(data);
-
-    request.end();
-
-}
-
-
-// ================================
-// CLAIM TASK
-// ================================
-
-function claimTask() {
-
-    const data =
-        JSON.stringify({
-
-            workerId:
-                workerId
-
-        });
-
-
-    const options = {
-
-        hostname: "127.0.0.1",
-
-        port: 5001,
-
-        path:
-            "/api/tasks/claim",
-
-        method: "POST",
-
-        headers: {
-
-            "Content-Type":
-                "application/json",
-
-            "Content-Length":
-                Buffer.byteLength(data)
-
-        }
-
-    };
-
-
-    const request =
-        http.request(
-
-            options,
-
-            (res) => {
-
-                let response = "";
-
-
-                res.on(
-                    "data",
-                    chunk => {
-
-                        response += chunk;
-
-                    }
-                );
-
-
-                res.on(
-                    "end",
-                    () => {
-
-                        try {
-
-                            if (!response.trim()) { return; }
-
-const result =
-                                JSON.parse(
-                                    response
-                                );
-
-
-                            // ================================
-                            // NO TASK
-                            // ================================
-
-                            if (
-                                res.statusCode ===
-                                404
-                            ) {
-
-                                console.log(
-
-                                    `ðŸ“­ ${workerId}: ` +
-                                    `No queued tasks`
-
-                                );
-
-                                return;
-
-                            }
-
-
-                            // ================================
-                            // WORKER OFFLINE
-                            // ================================
-
-                            if (
-                                res.statusCode ===
-                                400
-                            ) {
-
-                                console.log(
-
-                                    `âš ï¸ ${workerId}: ` +
-                                    `${result.error}`
-
-                                );
-
-                                return;
-
-                            }
-
-
-                            // ================================
-                            // TASK CLAIMED
-                            // ================================
-
-                            if (
-                                res.statusCode ===
-                                200
-                            ) {
-
-                                console.log(
-
-                                    `ðŸ”’ ${workerId} claimed ` +
-                                    `${result.id}`
-
-                                );
-
-
-                                console.log(
-
-                                    `âš™ï¸ ${workerId} executing: ` +
-                                    `${result.task}`
-
-                                );
-
-
-                                executeTask(
-                                    result
-                                );
-
-                                return;
-
-                            }
-
-
-                            // ================================
-                            // OTHER RESPONSE
-                            // ================================
-
-                            console.log(
-
-                                `âš ï¸ ${workerId}: ` +
-                                `Unexpected response ` +
-                                `${res.statusCode}`
-
-                            );
-
-                            console.log(result);
-
-                        }
-
-                        catch (error) {
-
-                            console.log("WORKER ERROR:", error.message);
-                            console.log("RESPONSE:", response);
-
-                        }
-
-
-
-
-
-
-
-
-
-                        }
-                    );
-
+        }, (res) => {
+            let response = "";
+
+            res.on("data", chunk => {
+                response += chunk;
+            });
+
+            res.on("end", () => {
+                let result = null;
+
+                try {
+                    result = response ? JSON.parse(response) : null;
+                } catch {
+                    result = response;
                 }
 
-            );
-
-
-    request.on(
-        "error",
-        () => {
-
-            console.log("Cannot connect to backend");
-
-        }
-    );
-
-
-
-
-
-
-
-    request.write(data);
-
-    request.end();
-
-}
-
-
-// ================================
-// EXECUTE TASK
-// ================================
-
-function executeTask(task) {
-
-    console.log(
-
-        `ðŸš€ ${workerId} started ` +
-        `${task.id}`
-
-    );
-
-
-    // =================================
-    // FAILURE SIMULATION
-    // =================================
-
-    const shouldFail =
-        task.task
-            .toLowerCase()
-            .includes("fail");
-
-
-    setTimeout(() => {
-
-
-        // =================================
-        // FAILURE
-        // =================================
-
-        if (shouldFail) {
-
-            console.log(
-
-                `âŒ ${workerId}: ` +
-                `${task.id} failed`
-
-            );
-
-
-            updateTask(
-
-                task.id,
-
-                "failed",
-
-                "Simulated worker failure"
-
-            );
-
-
-            return;
-
-        }
-
-
-        // =================================
-        // SUCCESS
-        // =================================
-
-        console.log(
-
-            `âœ… ${workerId}: ` +
-            `${task.id} completed`
-
-        );
-
-
-        updateTask(
-
-            task.id,
-
-            "completed"
-
-        );
-
-
-    }, 30000);
-
-}
-
-
-// ================================
-// UPDATE TASK
-// ================================
-
-function updateTask(
-    taskId,
-    status,
-    errorMessage = null
-) {
-
-    const data =
-        JSON.stringify({
-
-            status:
-                status,
-
-            workerId:
-                workerId,
-
-            error:
-                errorMessage
-
+                resolve({
+                    statusCode: res.statusCode,
+                    result: result
+                });
+            });
         });
 
-
-    const options = {
-
-        hostname: "127.0.0.1",
-
-        port: 5001,
-
-        path:
-            `/api/tasks/${taskId}`,
-
-        method:
-            "PUT",
-
-        headers: {
-
-            "Content-Type":
-                "application/json",
-
-            "Content-Length":
-                Buffer.byteLength(data)
-
-        }
-
-    };
-
-
-    const request =
-        http.request(
-
-            options,
-
-            (res) => {
-
-                let response = "";
-
-
-                res.on(
-                    "data",
-                    chunk => {
-
-                        response += chunk;
-
-                    }
-                );
-
-
-                res.on(
-                    "end",
-                    () => {
-
-                        try {
-
-                            if (!response.trim()) { return; }
-
-const result =
-                                JSON.parse(
-                                    response
-                                );
-
-
-                            console.log(
-
-                                `ðŸ“Š ${workerId} â†’ ` +
-                                `${taskId} â†’ ` +
-                                `${result.status}`
-
-                            );
-
-
-                            if (
-                                result.message
-                            ) {
-
-                                console.log(
-
-                                    `ðŸ” ${result.message}`
-
-                                );
-
-                            }
-
-                        }
-
-                        catch {
-
-                            console.log(
-
-                                `âŒ ${workerId}: ` +
-                                `Invalid update response`
-
-                            );
-
-                        }
-
-                    }
-                );
-
-            }
-
-        );
-
-
-    request.on(
-        "error",
-        () => {
-
-            console.log(
-
-                `âŒ ${workerId}: ` +
-                `Failed to update task`
-
-            );
-
-        }
-    );
-
-
-    request.write(data);
-
-    request.end();
-
+        req.on("error", reject);
+        req.write(data);
+        req.end();
+    });
 }
 
+async function claimTask() {
+    try {
+        const result = await post("/api/tasks/claim", {
+            workerId: workerId
+        });
 
-// ================================
-// START HEARTBEAT
-// ================================
+        if (result.statusCode !== 200 || !result.result) {
+            console.log(`No queued task for ${workerId}`);
+            return;
+        }
 
-sendHeartbeat();
+        const task = result.result;
 
+        console.log(`CLAIMED: Task ${task.id}`);
+        console.log(`EXECUTING: ${task.task}`);
 
-// ================================
-// HEARTBEAT EVERY 10 SECONDS
-// ================================
+        setTimeout(async () => {
+            try {
+                const completed = await post("/api/tasks/complete", {
+                    taskId: task.id,
+                    workerId: workerId,
+                    status: "completed"
+                });
 
-setInterval(() => {
+                if (completed.statusCode === 200) {
+                    console.log(`COMPLETED: Task ${task.id}`);
+                } else {
+                    console.log("COMPLETE FAILED:", completed.result);
+                }
+            } catch (error) {
+                console.log("COMPLETE ERROR:", error.message);
+            }
+        }, 3000);
 
-    sendHeartbeat();
+    } catch (error) {
+        console.log("WORKER ERROR:", error.message);
+    }
+}
 
-}, 10000);
-
-
-// ================================
-// FIRST TASK CHECK
-// ================================
+console.log("================================");
+console.log(`Worker started: ${workerId}`);
+console.log("================================");
 
 claimTask();
-
-
-// ================================
-// CHECK QUEUE EVERY 5 SECONDS
-// ================================
-
-setInterval(() => {
-
-    claimTask();
-
-}, 5001);
-
-
-
-
-
-
+setInterval(claimTask, 5000);
