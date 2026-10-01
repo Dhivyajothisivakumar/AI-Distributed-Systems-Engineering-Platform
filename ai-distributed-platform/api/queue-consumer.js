@@ -3,7 +3,7 @@ const { neon } = require("@neondatabase/serverless");
 
 const sql = neon(process.env.DATABASE_URL);
 
-module.exports = handleCallback(async (message, metadata) => {
+const callback = handleCallback(async (message, metadata) => {
     console.log("Queue message received:", metadata.messageId);
     console.log("Message:", message);
 
@@ -13,7 +13,6 @@ module.exports = handleCallback(async (message, metadata) => {
         throw new Error("Invalid taskId");
     }
 
-    // Check task
     const existing = await sql`
         SELECT *
         FROM tasks
@@ -27,7 +26,6 @@ module.exports = handleCallback(async (message, metadata) => {
 
     const task = existing[0];
 
-    // Mark task as running
     await sql`
         UPDATE tasks
         SET
@@ -39,10 +37,8 @@ module.exports = handleCallback(async (message, metadata) => {
 
     console.log(`Processing TASK-${taskId}: ${task.task}`);
 
-    // Simulate distributed processing
     await new Promise(resolve => setTimeout(resolve, 3000));
 
-    // Simulated failure test
     if (String(task.task).toLowerCase().includes("fail")) {
         const newRetries = Number(task.retries || 0) + 1;
 
@@ -57,10 +53,6 @@ module.exports = handleCallback(async (message, metadata) => {
                 WHERE id = ${taskId}
             `;
 
-            console.log(
-                `TASK-${taskId} failed -> retry ${newRetries}`
-            );
-
             throw new Error("Simulated worker failure");
         }
 
@@ -74,10 +66,6 @@ module.exports = handleCallback(async (message, metadata) => {
             WHERE id = ${taskId}
         `;
 
-        console.log(
-            `TASK-${taskId} failed permanently after ${newRetries} retries`
-        );
-
         return {
             success: false,
             taskId,
@@ -86,7 +74,6 @@ module.exports = handleCallback(async (message, metadata) => {
         };
     }
 
-    // Successful task
     await sql`
         UPDATE tasks
         SET
@@ -104,3 +91,40 @@ module.exports = handleCallback(async (message, metadata) => {
         status: "completed"
     };
 });
+
+module.exports = async function handler(req, res) {
+    const headers = new Headers();
+
+    for (const [key, value] of Object.entries(req.headers || {})) {
+        if (Array.isArray(value)) {
+            headers.set(key, value.join(", "));
+        } else if (value !== undefined) {
+            headers.set(key, String(value));
+        }
+    }
+
+    const body = req.body
+        ? JSON.stringify(req.body)
+        : undefined;
+
+    const request = new Request(
+        `https://${req.headers.host || "localhost"}/api/queue-consumer`,
+        {
+            method: req.method || "POST",
+            headers,
+            body
+        }
+    );
+
+    const response = await callback(request);
+
+    res.status(response.status);
+
+    response.headers.forEach((value, key) => {
+        res.setHeader(key, value);
+    });
+
+    const responseBody = await response.text();
+
+    res.send(responseBody);
+};
